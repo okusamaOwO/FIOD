@@ -1,0 +1,62 @@
+import os.path as osp
+import random
+
+import numpy as np
+import torch
+from torch.utils import data
+import os
+import torchvision.transforms as transforms
+import torchvision.transforms.functional as TF
+
+from PIL import Image
+
+class RealFogDataset(data.Dataset):
+    def __init__(self, fog_root):
+      
+        self.fog_root = fog_root
+        self.img_ids = [f for f in os.listdir(self.fog_root) if f.endswith('.jpg') or f.endswith('.png')]
+        self.files = []
+        for img_id in self.img_ids:
+            fog_img_file = osp.join(self.fog_root, img_id)
+            self.files.append({
+                "fog_img": fog_img_file,
+                "name": img_id
+            })
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, index):
+        datafiles = self.files[index]
+        fog_image = Image.open(datafiles["fog_img"]).convert('RGB')
+        name = datafiles["name"]
+
+        fog_image = self._apply_transform(fog_image)
+        # fog_image = np.asarray(fog_image, np.float32) / 255.0
+        fog_image = np.asarray(fog_image, np.float32)
+
+        fog_image = fog_image[:, :, ::-1].copy()  # RGB to BGR
+
+        # mean = np.array([104.00698793, 116.66876762, 122.67891434], dtype=np.float32) / 255.0
+        # fog_image -= mean
+
+        fog_image = fog_image.transpose((2, 0, 1))
+
+        fog_image = torch.from_numpy(fog_image)
+
+        return fog_image, name
+
+    def _apply_transform(self, fog_image, target_size=640):
+        """
+        Resize ảnh về kích thước cố định 640x640.
+        """
+        fog_image = TF.resize(fog_image, (target_size, target_size))
+        return fog_image
+
+    def collate_fn(self, batch):
+        """
+        Hàm này được sử dụng để gom các mẫu trong batch lại với nhau.
+        """
+        fog_images, names = zip(*batch)
+        fog_images = torch.stack(fog_images, 0)
+        return fog_images, names
