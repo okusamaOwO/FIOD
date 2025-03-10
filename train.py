@@ -1,7 +1,8 @@
-from dataset.newPairedClearSyntheticDataset import PairedClearSyntheticDataset
+from dataset.PairedClearSyntheticDataset import PairedClearSyntheticDataset
 import matplotlib.pyplot as plt
 import torch
 import matplotlib.patches as patches
+from dataset.RealFogDataset import RealFogDataset
 
 def show_img(img):
     img = img.clone().detach().cpu()
@@ -39,11 +40,6 @@ def show_img_with_boxes(img, boxes):
     plt.axis('off')
     plt.show()
 
-dataset = PairedClearSyntheticDataset(
-    r"D:\Downloads\lab\dataset\data\dataset02\clear", 
-    r"D:\Downloads\lab\dataset\data\dataset02\\foggy")
-
+dataset = RealFogDataset(r"D:\Downloads\lab\dataset\data\dataset02\Foggy_Driving\Processed_foggy_driving")
 img = dataset[0][0]
-boxes = dataset[0][2]
-print(boxes)
-show_img_with_boxes(img, boxes)
+show_img(img)
