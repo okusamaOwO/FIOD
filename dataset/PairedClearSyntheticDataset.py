@@ -9,29 +9,29 @@ import torchvision.transforms.functional as TF
 import cv2
 
 class PairedClearSyntheticDataset(data.Dataset):
-    def __init__(self, src_root, trg_root, set='train'):
+    def __init__(self, clear_root, foggy_root, set='train'):
         '''
-        "src_root: path to clear img folder"
-        "trg_root: path to synthetic img folder"
+        "clear_root: path to clear img folder"
+        "foggy_root: path to synthetic img folder"
         ''' 
 
-        self.src_root = src_root
-        self.trg_root = trg_root
+        self.clear_root = clear_root
+        self.foggy_root = foggy_root
         self.set = set
 
         # Read image list from images directory
-        self.src_image_dir = osp.join(src_root, set, 'images')
-        self.trg_image_dir = osp.join(trg_root, set, 'images')
-        self.label_dir = osp.join(trg_root, set, 'labels')
-        self.img_names = [f for f in os.listdir(self.src_image_dir) if f.endswith('.jpg') or f.endswith('.png')]
+        self.foggy_img_dir = osp.join(clear_root, set, 'images')
+        self.foggy_img_dir = osp.join(foggy_root, set, 'images')
+        self.label_dir = osp.join(clear_root, set, 'labels')
+        self.img_names = [f for f in os.listdir(self.foggy_img_dir) if f.endswith('.jpg') or f.endswith('.png')]
         self.files = []
         for img_name in self.img_names:
-            src_img_file = osp.join(self.src_image_dir, img_name)
-            trg_img_file = osp.join(self.trg_image_dir, img_name)
+            clear_img_file = osp.join(self.foggy_img_dir, img_name)
+            foggy_img_file = osp.join(self.foggy_img_dir, img_name)
             label_file = osp.join(self.label_dir, img_name.replace('.jpg', '.txt').replace('.png', '.txt'))
             self.files.append({
-                "src_img_path": src_img_file,
-                "trg_img_path": trg_img_file,
+                "clear_img_path": clear_img_file,
+                "foggy_img_path": foggy_img_file,
                 "label_path": label_file,
                 "img_name": img_name
             })
@@ -41,8 +41,8 @@ class PairedClearSyntheticDataset(data.Dataset):
 
     def __getitem__(self, index):
         datafiles = self.files[index]
-        src_img_path = datafiles["src_img_path"]
-        trg_img_path = datafiles["trg_img_path"]
+        clear_img_path = datafiles["clear_img_path"]
+        foggy_img_path = datafiles["foggy_img_path"]
         label_path = datafiles["label_path"]
         img_name = datafiles["img_name"]
 
@@ -57,10 +57,15 @@ class PairedClearSyntheticDataset(data.Dataset):
             labels.append(int(class_id))
 
         # Get processed img, tensor already 
-        src_img = self.preprocessing_img(src_img_path)
-        trg_img = self.preprocessing_img(trg_img_path)
+        clear_img = self.preprocessing_img(clear_img_path)
+        foggy_img = self.preprocessing_img(foggy_img_path)
         
-        return src_img, trg_img, boxes, labels, img_name
+        labels = np.array(labels)
+        labels = torch.from_numpy(labels)
+
+        boxes = np.array(boxes)
+        boxes = torch.from_numpy(boxes)
+        return clear_img, foggy_img, boxes, labels, img_name
 
     def preprocessing_img(self, img_path, size=(640, 640)):
         """
@@ -82,17 +87,17 @@ class PairedClearSyntheticDataset(data.Dataset):
         """
         Gom nhóm batch và chuẩn hóa bounding boxes theo định dạng (batch_idx, label, x, y, w, h).
         """
-        src_images, trg_images, boxes_list, labels_list, names = zip(*batch)
+        clear_images, foggy_images, boxes, labels, img_name = zip(*batch)
 
         # Stack ảnh thành batch
-        src_images = torch.stack(src_images, 0)
-        trg_images = torch.stack(trg_images, 0)
+        clear_images = torch.stack(clear_images, 0)
+        foggy_images = torch.stack(foggy_images, 0)
 
         # Danh sách chứa boxes đã xử lý
         all_boxes = []
 
         # Duyệt từng ảnh trong batch để xử lý boxes
-        for batch_idx, (boxes, labels) in enumerate(zip(boxes_list, labels_list)):
+        for batch_idx, (boxes, labels) in enumerate(zip(boxes, labels)):
             if len(boxes) > 0:
                 # Tạo tensor batch index có cùng số lượng boxes
                 batch_indices = torch.full((len(boxes), 1), batch_idx, dtype=torch.float32)
@@ -108,4 +113,4 @@ class PairedClearSyntheticDataset(data.Dataset):
         else:
             boxes = torch.empty((0, 6), dtype=torch.float32)  # Nếu batch không có box nào
 
-        return src_images, trg_images, boxes, names
+        return clear_images, foggy_images, boxes, img_name
