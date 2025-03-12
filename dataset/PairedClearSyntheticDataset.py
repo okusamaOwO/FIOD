@@ -11,8 +11,8 @@ import cv2
 class PairedClearSyntheticDataset(data.Dataset):
     def __init__(self, clear_root, foggy_root, set='train'):
         '''
-        "clear_root: path to clear img folder"
-        "foggy_root: path to synthetic img folder"
+        "clear_root: path to clear folder"
+        "foggy_root: path to synthetic folder"
         ''' 
 
         self.clear_root = clear_root
