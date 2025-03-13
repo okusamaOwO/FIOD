@@ -2,19 +2,19 @@ import argparse
 
 IMG_MEAN = (104.00698793, 116.66876762, 122.67891434)
 BETA = 0.005
-BATCH_SIZE = 2
+BATCH_SIZE = 4
 ITER_SIZE = 1
-NUM_WORKERS = 0
+NUM_WORKERS = 4
 INPUT_SIZE = '2048,1024'
 INPUT_SIZE_RF = '1280,960'
-NUM_EPOCHS = 1
+NUM_EPOCHS = 25
 NUM_STEPS = 1000000
 NUM_STEPS_STOP = 60000  # early stopping
 RANDOM_SEED = 1234
 
-SF_ROOT = r"E:/dataset01/foggy"
-CW_ROOT = r"E:/dataset01/clear"
-RF_ROOT = r"E:/dataset01/Foggy_Driving/Processed_foggy_driving/images"
+SF_ROOT = r"/khanh/dataset01/foggy"
+CW_ROOT = r"/khanh/dataset01/clear"
+RF_ROOT = r"/khanh/dataset01/Foggy_Driving/Processed_foggy_driving/images"
 
 
 SET = 'train'
