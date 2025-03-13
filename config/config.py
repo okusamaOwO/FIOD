@@ -14,9 +14,7 @@ RANDOM_SEED = 1234
 
 SF_ROOT = r"D:\Downloads\lab\dataset\data\dataset02\foggy"
 CW_ROOT = r"D:\Downloads\lab\dataset\data\dataset02\clear"
-RF_ROOT = r"D:\Downloads\lab\dataset\data\dataset02\Foggy_Driving\Foggy_Driving"
-RF_LIST_FILE = r"D:\Downloads\lab\dataset\data\dataset02\Foggy_Driving\Foggy_Driving\lists_file_names\leftImg8bit_testall_filenames.txt"
-
+RF_ROOT = r"D:\Downloads\lab\dataset\data\dataset02\Foggy_Driving\Processed_foggy_driving"
 SET = 'train'
 
 WEIGHT_BOX = 1
@@ -32,7 +30,6 @@ def get_arguments():
     parser.add_argument("--sf-root", type=str, default=SF_ROOT, help="Path to Cityscapes foggy dataset")
     parser.add_argument("--cw-root", type=str, default=CW_ROOT, help="Path to Cityscapes dataset")
     parser.add_argument("--rf-root", type=str, default=RF_ROOT, help="Path to Foggy Driving dataset")
-    parser.add_argument("--rf-list-file", type=str, default=RF_LIST_FILE, help="Path to Foggy Driving file list")
     parser.add_argument("--set", type=str, default=SET, help="Dataset split (train/val/test)")
 
     # Training parameters

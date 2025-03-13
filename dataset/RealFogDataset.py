@@ -48,7 +48,7 @@ class RealFogDataset(data.Dataset):
         img = cv2.resize(img, size)
         img = img.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
         img = np.ascontiguousarray(img)
-        img = torch.from_numpy(img)
+        img = torch.from_numpy(img).float()
         return img
 
     def collate_fn(self, batch):
@@ -57,4 +57,7 @@ class RealFogDataset(data.Dataset):
         """
         fog_images, img_names = zip(*batch)
         fog_images = torch.stack(fog_images, 0)
+        print("-" * 159)
+        print("DTYPE OF REAL FOG IMAGES: ", fog_images.dtype)
+        
         return fog_images, img_names

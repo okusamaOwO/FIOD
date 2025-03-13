@@ -65,6 +65,7 @@ class PairedClearSyntheticDataset(data.Dataset):
 
         boxes = np.array(boxes)
         boxes = torch.from_numpy(boxes)
+
         return clear_img, foggy_img, boxes, labels, img_name
 
     def preprocessing_img(self, img_path, size=(640, 640)):
@@ -90,8 +91,8 @@ class PairedClearSyntheticDataset(data.Dataset):
         clear_images, foggy_images, boxes, labels, img_name = zip(*batch)
 
         # Stack ảnh thành batch
-        clear_images = torch.stack(clear_images, 0)
-        foggy_images = torch.stack(foggy_images, 0)
+        clear_images = torch.stack(clear_images, 0).float()
+        foggy_images = torch.stack(foggy_images, 0).float()
 
         # Danh sách chứa boxes đã xử lý
         all_boxes = []
