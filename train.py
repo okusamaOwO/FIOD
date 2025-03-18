@@ -15,7 +15,7 @@ import sys
 from utilities import plot_losses
 
 # path = r"D:\UNI\LAB\FIOD_\yolov9_main"
-path = r"D:\Downloads\lab\FIOD\yolov9_main"
+path = "./yolov9_main"
 # path = r"E:\lab\FIOD_\yolov9_main"
 
 sys.path.insert(0, path)
@@ -50,7 +50,7 @@ def intersect_dicts(da, db, exclude=()):
 
 # def get_model(checkpoint_path = r"D:\UNI\LAB\FIOD_\yolov9-s.pt"):
 # def get_model(checkpoint_path = r"/content/drive/MyDrive/FIOD_/yolov9-s.pt"):
-def get_model(checkpoint_path = r"D:\Downloads\lab\copy_fiod\yolov9-s.pt"):
+def get_model(checkpoint_path = "./yolov9-s.pt"):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml).to(device)
 
@@ -86,7 +86,6 @@ def main():
         pin_memory=False,
         collate_fn=cwsf_dataset.collate_fn
     )
-    print("THIS IS LINE 89")
     rf_dataset = RealFogDataset(args.rf_root)
     rf_loader = DataLoader(
         rf_dataset,
@@ -136,7 +135,6 @@ def main():
 
     # checkpoint = torch.load('yolov9-s.pt', map_location='cpu')
     # model.load_state_dict(checkpoint, strict = False)
-    print("THIS IS LINE 139")
 
     maps = np.zeros(nc)  # mAP per class
     results = (0, 0, 0, 0, 0, 0, 0)  # P, R, mAP@.5, mAP@.5-.95, val_loss(box, obj, cls)
@@ -159,7 +157,7 @@ def main():
 
     save_dir = os.path.join(os.path.dirname(__file__), 'results')
     gs = max(int(model.stride.max()), 32)
-    val_loader = create_dataloader(r"D:\Downloads\lab\FIOD_\dataset01\clear\val",
+    val_loader = create_dataloader("./dataset01/clear/val",
                                    640,
                                    args.batch_size,
                                    gs,
@@ -264,7 +262,6 @@ def main():
                 fog_factor_cw = [0] * args.batch_size
                 fog_factor_rf = [0] * args.batch_size
 
-                print("THIS IS LINE 266")
 
                 for i in range(args.batch_size):
                     sf_gram[i] = gram_matrix(sf_feature[i])
@@ -328,7 +325,6 @@ def main():
             sf_loss = 0
             cw_loss = 0
             con_loss = 0
-            print("THIS IS LINE 331")
             if batch_idx % 3 == 0:
                 num_batches_cw_sf += 1
                 # SF-CW training
@@ -338,27 +334,21 @@ def main():
 
                 # Get predictions and features
                 # with torch.amp.autocast(amp_device):
-                print("THIS IS LINE 341")
 
                 with torch.autocast(device_type=amp_device, dtype= amp_dtype):
-                    print("this is line 344")
                     sf_predictions = model(sf_images)  # forward
-                    print("this is line 346")
                     sf_loss, sf_loss_items = compute_loss(sf_predictions[1], boxes)
                     sf_box_loss, sf_class_loss, sf_dfl_loss = sf_loss_items
-                    print("this is line 348")
                     cw_predictions = model(cw_images)  # forward
                     cw_loss, cw_loss_items = compute_loss(cw_predictions[1], boxes)
                     cw_box_loss, cw_class_loss, cw_dfl_loss = cw_loss_items
 
                 sf_features_list = extractor.get_feature_maps(sf_images)
                 feature_sf0, feature_sf1 = sf_features_list[0], sf_features_list[1]
-                print("this is line 355")
                 cw_features_list = extractor.get_feature_maps(cw_images)
                 feature_cw0, feature_cw1 = cw_features_list[0], cw_features_list[1]
 
                 # CONSISTENCY LOSS
-                print("this is line 360")
                 pl = len(sf_predictions[1]) # prediction layers
                 for i in range(len(sf_predictions[1])):
                     for j in range(args.batch_size):
@@ -447,7 +437,6 @@ def main():
                 na, da, ha, wa = a_feature.size()
                 nb, db, hb, wb = b_feature.size()
 
-                print("THIS IS LINE 446")
                 fogpassfilter = None
                 fogpassfilter_optimizer = None
 
@@ -550,7 +539,6 @@ def main():
             plots=False,
             compute_loss=compute_loss
         )
-        print("THIS IS LINE 549")
         # Update best mAP
         fi = fitness(np.array(results).reshape(1, -1))
         if fi > best_fitness:
