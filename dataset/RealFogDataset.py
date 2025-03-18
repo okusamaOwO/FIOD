@@ -57,7 +57,4 @@ class RealFogDataset(data.Dataset):
         """
         fog_images, img_names = zip(*batch)
         fog_images = torch.stack(fog_images, 0)
-        print("-" * 159)
-        print("DTYPE OF REAL FOG IMAGES: ", fog_images.dtype)
-        
         return fog_images, img_names
