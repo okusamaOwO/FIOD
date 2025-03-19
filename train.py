@@ -50,7 +50,7 @@ def intersect_dicts(da, db, exclude=()):
 
 # def get_model(checkpoint_path = r"D:\UNI\LAB\FIOD_\yolov9-s.pt"):
 # def get_model(checkpoint_path = r"/content/drive/MyDrive/FIOD_/yolov9-s.pt"):
-def get_model(checkpoint_path = r"/khanh/fiod/yolov9-s.pt"):
+def get_model(checkpoint_path = r"/khanh/yolov9-s.pt"):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml).to(device)
 
@@ -149,8 +149,9 @@ def main():
     lf = one_flat_cycle(1, hyp['lrf'], opt.epochs)  # flat cosine 1->hyp['lrf']
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
 
-    ema = ModelEMA(model) if RANK in {-1, 0} else None
-
+    ema = ModelEMA(model)
+    print("Model weights:", list(model.parameters())[0].data[:5])
+    print("EMA weights:", list(ema.ema.parameters())[0].data[:5])
     compute_loss = ComputeLoss(model)
 
     best_fitness, start_epoch = 0.0, 0
@@ -198,12 +199,10 @@ def main():
         pbar = tqdm(range(num_batches), desc=f"Epoch {epoch + 1}/{args.num_epochs}")
 
         for batch_idx in pbar:
-            print('1')
             ##############################
             # Fog-pass filtering training using fogpass loader
             foggy_image, clear_image, box, name = next(iter(cwsf_pair_loader_fogpass))
             rf_img, rf_name = next(iter(rf_loader_fogpass))
-            print('2')
             model.eval()
             for param in model.parameters():
                 param.requires_grad = False
@@ -215,21 +214,17 @@ def main():
             # Get corresponding RF batch
             rf_batch_idx = batch_idx % len(rf_loader)
             rf_img, rf_name = next(iter(rf_loader))
-            print('3')
             # Move images to GPU
             realfog_images = rf_img.to(device)
             foggy_images = foggy_image.to(device)
             clear_images = clear_image.to(device)
-            print('A')
             # Get feature maps for each image type
             realfog_features = extractor.get_feature_maps(realfog_images)
             foggy_features = extractor.get_feature_maps(foggy_images)
             clear_features = extractor.get_feature_maps(clear_images)
-            print('B')
             feature_realfog0, feature_realfog1 = realfog_features[0], realfog_features[1]
             feature_foggy0, feature_foggy1 = foggy_features[0], foggy_features[1]
             feature_clear0, feature_clear1 = clear_features[0], clear_features[1]
-            print('C')
             fsm_weights = {'layer0': 0.5, 'layer1': 0.5}
             sf_features = {'layer0': feature_foggy0, 'layer1': feature_foggy1}
             cw_features = {'layer0': feature_clear0, 'layer1': feature_clear1}
@@ -238,9 +233,7 @@ def main():
             total_fpf_loss = 0
             fogpassfilter = None
             fogpassfilter_optimizer = None
-            print('4')
             for idx, layer in enumerate(fsm_weights):
-                print('5')
                 cw_feature = cw_features[layer]
                 sf_feature = sf_features[layer]
                 rf_feature = rf_features[layer]
@@ -301,7 +294,6 @@ def main():
                 # fogpassfilter_optimizer.step()
                 total_fpf_loss += fog_pass_filter_loss
 
-            print('6')
             # print(f'total_fpf_loss: {total_fpf_loss}')
             with torch.autograd.detect_anomaly():
                 total_fpf_loss.backward()
@@ -313,7 +305,6 @@ def main():
             # Detection training using NORMAL loader
             foggy_image, clear_image, box, name = next(iter(cwsf_pair_loader))
             rf_img, rf_name = next(iter(rf_loader))
-            print('7')
             model.train()
             for param in model.parameters():
                 param.requires_grad = True
@@ -321,7 +312,6 @@ def main():
                 param.requires_grad = False
             for param in FogPassFilter2.parameters():
                 param.requires_grad = False
-            print('8')
             optimizer.zero_grad()
 
             sf_loss = 0
@@ -414,7 +404,6 @@ def main():
 
             loss_fsm = 0
             fog_pass_filter_loss = 0
-            print('9')
 
             print(colorstr(f"batch index {batch_idx + 1}: ") +
                 f"{colorstr('yellow', 'box_loss')}: {sf_box_loss:.4f}, "
@@ -490,7 +479,8 @@ def main():
             scaler.update()
             if ema:
                 ema.update(model)
-
+            print("Model weights:", list(model.parameters())[0].data[:5])
+            print("EMA weights:", list(ema.ema.parameters())[0].data[:5])
             if (sf_box_loss + cw_box_loss) != 0:
                 box_loss = sf_box_loss + cw_box_loss
                 loss_box_value += box_loss.data.cpu().numpy() / num_batches
