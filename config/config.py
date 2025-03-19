@@ -1,6 +1,5 @@
 import argparse
 
-IMG_MEAN = (104.00698793, 116.66876762, 122.67891434)
 BETA = 0.005
 BATCH_SIZE = 4
 ITER_SIZE = 1
@@ -51,9 +50,6 @@ def get_arguments():
     parser.add_argument("--weight-dfl", type=float, default=WEIGHT_DFL, help="DFL loss weight")
     parser.add_argument("--weight-fsm", type=float, default=WEIGHT_FSM, help="FSM loss weight")
     parser.add_argument("--weight-con", type=float, default=WEIGHT_CON, help="Consistency loss weight")
-
-    # Mean values
-    parser.add_argument("--img-mean", type=tuple, default=IMG_MEAN, help="Image mean values")
     return parser.parse_args()
 
 args = get_arguments()
