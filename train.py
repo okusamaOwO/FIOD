@@ -15,7 +15,7 @@ import sys
 from utilities import plot_losses
 
 # path = r"D:\UNI\LAB\FIOD_\yolov9_main"
-path = r"/fiod/yolov9_main"
+path = r"/khanh/fiod/yolov9_main"
 # path = r"E:\lab\FIOD_\yolov9_main"
 
 sys.path.insert(0, path)
@@ -50,7 +50,7 @@ def intersect_dicts(da, db, exclude=()):
 
 # def get_model(checkpoint_path = r"D:\UNI\LAB\FIOD_\yolov9-s.pt"):
 # def get_model(checkpoint_path = r"/content/drive/MyDrive/FIOD_/yolov9-s.pt"):
-def get_model(checkpoint_path = r"/fiod/yolov9-s.pt"):
+def get_model(checkpoint_path = r"/khanh/fiod/yolov9-s.pt"):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml).to(device)
 
