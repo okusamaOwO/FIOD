@@ -1,6 +1,5 @@
 import argparse
 
-IMG_MEAN = (104.00698793, 116.66876762, 122.67891434)
 BETA = 0.005
 BATCH_SIZE = 4
 ITER_SIZE = 1
@@ -9,14 +8,12 @@ INPUT_SIZE = '2048,1024'
 INPUT_SIZE_RF = '1280,960'
 NUM_EPOCHS = 25
 NUM_STEPS = 1000000
-NUM_STEPS_STOP = 60000  # early stopping
+NUM_STEPS_STOP = 60000  
 RANDOM_SEED = 1234
 
-SF_ROOT = r"/khanh/dataset01/foggy"
-CW_ROOT = r"/khanh/dataset01/clear"
-RF_ROOT = r"/khanh/dataset01/Foggy_Driving/Processed_foggy_driving/images"
-
-
+SF_ROOT = "/dataset02/foggy"
+CW_ROOT = "/dataset02/clear"
+RF_ROOT = "/dataset02/Foggy_Driving/Processed_foggy_driving"
 SET = 'train'
 
 WEIGHT_BOX = 1
@@ -53,9 +50,6 @@ def get_arguments():
     parser.add_argument("--weight-dfl", type=float, default=WEIGHT_DFL, help="DFL loss weight")
     parser.add_argument("--weight-fsm", type=float, default=WEIGHT_FSM, help="FSM loss weight")
     parser.add_argument("--weight-con", type=float, default=WEIGHT_CON, help="Consistency loss weight")
-
-    # Mean values
-    parser.add_argument("--img-mean", type=tuple, default=IMG_MEAN, help="Image mean values")
     return parser.parse_args()
 
 args = get_arguments()

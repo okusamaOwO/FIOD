@@ -75,7 +75,8 @@ def main():
     # loss của fpf
     fogpassfilter_loss = FogPassFilterLoss(margin=0.1)
 
-    cwsf_dataset = PairedClearSyntheticDataset(args.sf_root, args.cw_root, set='train')
+    from dataset.oldPairedClear import OldPairedClearSyntheticDataset
+    cwsf_dataset = OldPairedClearSyntheticDataset(args.sf_root, args.cw_root, set='train')
     cwsf_pair_loader = DataLoader(
         cwsf_dataset,
         batch_size=args.batch_size,
