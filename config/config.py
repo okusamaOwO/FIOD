@@ -11,9 +11,9 @@ NUM_STEPS = 1000000
 NUM_STEPS_STOP = 60000  
 RANDOM_SEED = 1234
 
-SF_ROOT = "/dataset02/foggy"
-CW_ROOT = "/dataset02/clear"
-RF_ROOT = "/dataset02/Foggy_Driving/Processed_foggy_driving"
+SF_ROOT = "./dataset02/foggy"
+CW_ROOT = "./dataset02/clear"
+RF_ROOT = "./dataset02/Foggy_Driving/Processed_foggy_driving"
 SET = 'train'
 
 WEIGHT_BOX = 1

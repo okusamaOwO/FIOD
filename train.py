@@ -50,7 +50,7 @@ def intersect_dicts(da, db, exclude=()):
 
 # def get_model(checkpoint_path = r"D:\UNI\LAB\FIOD_\yolov9-s.pt"):
 # def get_model(checkpoint_path = r"/content/drive/MyDrive/FIOD_/yolov9-s.pt"):
-def get_model(checkpoint_path = "./yolov9-s.pt"):
+def get_model(checkpoint_path = "./cloud_dataset/yolov9_s.pt"):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml).to(device)
 
@@ -119,7 +119,6 @@ def main():
     kl_loss = torch.nn.KLDivLoss(reduction='batchmean')
     m = nn.Softmax(dim=1)
     log_m = nn.LogSoftmax(dim=1)
-    mse_loss = nn.MSELoss(reduction='mean')
     # model = CNNModel()
 
     ################# YOLOv9
@@ -158,7 +157,7 @@ def main():
 
     save_dir = os.path.join(os.path.dirname(__file__), 'results')
     gs = max(int(model.stride.max()), 32)
-    val_loader = create_dataloader("./dataset01/clear/val",
+    val_loader = create_dataloader("./dataset02/clear/val",
                                    640,
                                    args.batch_size,
                                    gs,
@@ -355,10 +354,10 @@ def main():
                 pl = len(sf_predictions[1]) # prediction layers
                 for i in range(len(sf_predictions[1])):
                     for j in range(args.batch_size):
-                        con_loss += mse_loss(sf_predictions[1][i][j], cw_predictions[1][i][j])
-                        # con_loss = kl_loss(log_m(sf_predictions[1][i][j]), m(cw_predictions[1][i][j]))
-                    con_loss /= args.batch_size
-                con_loss /= pl
+                        sf_prediction_logsoftmax = log_m(torch.sigmoid(sf_predictions[1][i][j]))
+                        cw_prediction_softmax = m(torch.sigmoid(sf_predictions[1][i][j]))
+                        con_loss += 1000 * kl_loss(sf_prediction_logsoftmax, cw_prediction_softmax)
+                con_loss /= (pl * args.batch_size)
 
                 if torch.isnan(sf_predictions[1][i][j]).any() or torch.isnan(cw_predictions[1][i][j]).any():
                     print("NaN detected in predictions at layer", i, "batch index", j)
