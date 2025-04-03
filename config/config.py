@@ -6,14 +6,14 @@ ITER_SIZE = 1
 NUM_WORKERS = 2
 INPUT_SIZE = '2048,1024'
 INPUT_SIZE_RF = '1280,960'
-NUM_EPOCHS = 10
+NUM_EPOCHS = 3
 NUM_STEPS = 1000000
 NUM_STEPS_STOP = 60000  
 RANDOM_SEED = 1234
 
-SF_ROOT = "/khanh/dataset01/foggy"
-CW_ROOT = "/khanh/dataset01/clear"
-RF_ROOT = "/khanh/dataset01/Foggy_Driving/Processed_foggy_driving"
+SF_ROOT = "E:/dataset01/foggy"
+CW_ROOT = "E:/dataset01/clear"
+RF_ROOT = "E:/dataset01/Foggy_Driving/Processed_foggy_driving"
 SET = 'train'
 
 WEIGHT_BOX = 1

@@ -15,7 +15,7 @@ import sys
 from utilities import plot_losses
 
 # path = r"D:\UNI\LAB\FIOD_\yolov9_main"
-path = r"/khanh/fiod/yolov9_main"
+path = r"E:\lab\FIOD_official\yolov9_main"
 # path = r"E:\lab\FIOD_\yolov9_main"
 
 sys.path.insert(0, path)
@@ -50,7 +50,7 @@ def intersect_dicts(da, db, exclude=()):
 
 # def get_model(checkpoint_path = r"D:\UNI\LAB\FIOD_\yolov9-s.pt"):
 # def get_model(checkpoint_path = r"/content/drive/MyDrive/FIOD_/yolov9-s.pt"):
-def get_model(checkpoint_path = r"/khanh/yolov9-s.pt"):
+def get_model(checkpoint_path = r"E:\lab\FIOD_official\yolov9-s.pt"):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml).to(device)
 
@@ -128,11 +128,12 @@ def main():
     RANK = int(os.getenv('RANK', -1))
     hyp = yaml_load('yolov9_main/data/hyps/hyp.scratch-high.yaml')
     opt = parse_opt()
-    nc = 2
+    nc = 80
     names = {0: 'person', 1: 'car'}
 
     # model = Model(cfg='yolov9_main/models/detect/yolov9-s.yaml')
-    model = get_model()
+    # model = get_model()
+    model = Model(cfg='yolov9_main/models/detect/yolov9-s.yaml')
     model.to(device)
 
     # checkpoint = torch.load('yolov9-s.pt', map_location='cpu')
@@ -150,8 +151,6 @@ def main():
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
 
     ema = ModelEMA(model)
-    print("Model weights:", list(model.parameters())[0].data[:5])
-    print("EMA weights:", list(ema.ema.parameters())[0].data[:5])
     compute_loss = ComputeLoss(model)
 
     best_fitness, start_epoch = 0.0, 0
@@ -159,7 +158,7 @@ def main():
 
     save_dir = os.path.join(os.path.dirname(__file__), 'results')
     gs = max(int(model.stride.max()), 32)
-    val_loader = create_dataloader(r"/khanh/dataset01/foggy/val",
+    val_loader = create_dataloader(r"E:/dataset02/clear/val",
                                    640,
                                    args.batch_size,
                                    gs,
@@ -500,6 +499,8 @@ def main():
             scheduler.step()
 
             ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'names', 'stride', 'class_weights'])
+            print("Model weights:", list(model.parameters())[0].data[:5])
+            print("EMA weights:", list(ema.ema.parameters())[0].data[:5])
 
         print("Number of batches of pair CW-SF: ", num_batches_cw_sf)
         loss_con_value /= num_batches_cw_sf
