@@ -123,6 +123,7 @@ def main():
 
     ################# YOLOv9
 
+    # hmmm
     RANK = int(os.getenv('RANK', -1))
     hyp = yaml_load('yolov9_main/data/hyps/hyp.scratch-high.yaml')
     opt = parse_opt()

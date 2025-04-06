@@ -8,3 +8,4 @@ matplotlib == 3.10.0
 opencv-python
 pandas
 seaborn
+gdown
