@@ -356,7 +356,7 @@ def main():
                 for i in range(len(sf_predictions[1])):
                     for j in range(args.batch_size):
                         sf_prediction_logsoftmax = log_m(torch.sigmoid(sf_predictions[1][i][j]))
-                        cw_prediction_softmax = m(torch.sigmoid(sf_predictions[1][i][j]))
+                        cw_prediction_softmax = m(torch.sigmoid(cw_predictions[1][i][j]))
                         con_loss += 1000 * kl_loss(sf_prediction_logsoftmax, cw_prediction_softmax)
                 con_loss /= (pl * args.batch_size)
 
@@ -479,7 +479,7 @@ def main():
                 args.weight_fsm * loss_fsm +  # FSM Loss
                 args.weight_con * con_loss  # Consistency Loss
             )
-            total_loss = total_loss / num_batches
+
             with torch.autograd.detect_anomaly():
                 scaler.scale(total_loss).backward()
             scaler.unscale_(optimizer)  # unscale gradients
