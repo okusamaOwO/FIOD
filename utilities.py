@@ -82,40 +82,87 @@ def visualize_batch(images: np.ndarray,
         plt.close()
     else:
         plt.show()
+# Convert tensors to numpy arrays (with GPU handling)
+def tensor_to_numpy(tensor_or_list):
+    if isinstance(tensor_or_list, torch.Tensor):
+        # Move tensor to CPU if it's on GPU
+        if tensor_or_list.is_cuda:
+            return tensor_or_list.detach().cpu().numpy()
+        else:
+            return tensor_or_list.detach().numpy()
+    elif isinstance(tensor_or_list, list):
+        if all(isinstance(item, torch.Tensor) for item in tensor_or_list):
+            # Convert list of tensors to numpy
+            return np.array([tensor.item() if tensor.numel() == 1
+                            else tensor.detach().cpu().numpy() if tensor.is_cuda
+                            else tensor.detach().numpy()
+                            for tensor in tensor_or_list])
+        else:
+            # It's a list of numbers
+            return np.array(tensor_or_list)
+    else:
+        # Already a numpy array or other numeric type
+        return np.array(tensor_or_list)
 
-def plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, total_losses):
-    box_losses_np = [loss.detach().cpu().numpy() if isinstance(loss, torch.Tensor) else np.array(loss) for loss in
-                     box_losses]
-    cls_losses_np = [loss.detach().cpu().numpy() if isinstance(loss, torch.Tensor) else np.array(loss) for loss in
-                     cls_losses]
-    dfl_losses_np = [loss.detach().cpu().numpy() if isinstance(loss, torch.Tensor) else np.array(loss) for loss in
-                     dfl_losses]
-    fsm_losses_np = [loss.detach().cpu().numpy() if isinstance(loss, torch.Tensor) else np.array(loss) for loss in
-                     fsm_losses]
-    con_losses_np = [loss.detach().cpu().numpy() if isinstance(loss, torch.Tensor) else np.array(loss) for loss in
-                        con_losses]
-    total_losses_np = [loss.detach().cpu().numpy() if isinstance(loss, torch.Tensor) else np.array(loss) for loss in
-                       total_losses]
+def plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, total_losses, save_path='./training_losses.png'):
+    """
+    Plot various training losses over epochs and save the figure.
+    Handles PyTorch tensors on both CPU and CUDA devices.
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(len(box_losses)), box_losses_np, label='Box Loss', color='r')
-    plt.plot(range(len(cls_losses)), cls_losses_np, label='Class Loss', color='g')
-    plt.plot(range(len(dfl_losses)), dfl_losses_np, label='DFL Loss', color='b')
-    plt.plot(range(len(fsm_losses)), fsm_losses_np, label='FSM Loss', color='y')
-    plt.plot(range(len(con_losses)), con_losses_np, label='Con Loss', color='m')
-    plt.plot(range(len(total_losses)), total_losses_np, label='Total Loss', color='k')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.grid(True)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    # Tạo thư mục lưu nếu chưa tồn tại
-    os.makedirs('results', exist_ok=True)
-    save_path = os.path.join('results', f'loss_plot_{timestamp}.png')
+    Args:
+        box_losses (list or tensor): Box regression losses
+        cls_losses (list or tensor): Classification losses
+        dfl_losses (list or tensor): Distribution focal losses
+        fsm_losses (list or tensor): Feature selection module losses
+        con_losses (list or tensor): Contrastive losses
+        total_losses (list or tensor): Total combined losses
+        save_path (str, optional): Path to save the plot. Defaults to 'training_losses.png'.
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
 
-    # Lưu hình vào file
-    plt.savefig(save_path)
-    plt.close()
+    # Convert all loss data to numpy arrays
+    box_losses_np = tensor_to_numpy(box_losses)
+    cls_losses_np = tensor_to_numpy(cls_losses)
+    dfl_losses_np = tensor_to_numpy(dfl_losses)
+    fsm_losses_np = tensor_to_numpy(fsm_losses)
+    con_losses_np = tensor_to_numpy(con_losses)
+    total_losses_np = tensor_to_numpy(total_losses)
+
+    # Create epoch numbers
+    epochs = np.arange(1, len(total_losses_np) + 1)
+
+    # Create figure and axis
+    plt.figure(figsize=(12, 8))
+
+    # Plot each loss
+    plt.plot(epochs, box_losses_np, 'o-', label='Box Loss', linewidth=2)
+    plt.plot(epochs, cls_losses_np, 's-', label='Classification Loss', linewidth=2)
+    plt.plot(epochs, dfl_losses_np, '^-', label='DFL Loss', linewidth=2)
+    plt.plot(epochs, fsm_losses_np, 'd-', label='FSM Loss', linewidth=2)
+    plt.plot(epochs, con_losses_np, 'x-', label='Contrastive Loss', linewidth=2)
+    plt.plot(epochs, total_losses_np, '*-', label='Total Loss', linewidth=3)
+
+    # Add labels and legend
+    plt.xlabel('Epochs', fontsize=14)
+    plt.ylabel('Loss Value', fontsize=14)
+    plt.title('Training Losses Over Epochs', fontsize=16)
+    plt.legend(fontsize=12)
+    plt.grid(True, alpha=0.3)
+
+    # Ensure x-axis shows integer epoch numbers
+    plt.xticks(epochs)
+
+    # Add padding to make the plot more readable
+    plt.tight_layout()
+
+    # Save the figure
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
+    # Show the plot
+    plt.show()
+
+    print(f"Plot saved to {save_path}")
 
 def visualize_sample(dataset, index=0, target_size=640):
     # Lấy một mẫu từ dataset

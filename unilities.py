@@ -82,7 +82,29 @@ def visualize_batch(images: np.ndarray,
         plt.close()
     else:
         plt.show()
-def plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, total_losses, save_path='training_losses.png'):
+# Convert tensors to numpy arrays (with GPU handling)
+def tensor_to_numpy(tensor_or_list):
+    if isinstance(tensor_or_list, torch.Tensor):
+        # Move tensor to CPU if it's on GPU
+        if tensor_or_list.is_cuda:
+            return tensor_or_list.detach().cpu().numpy()
+        else:
+            return tensor_or_list.detach().numpy()
+    elif isinstance(tensor_or_list, list):
+        if all(isinstance(item, torch.Tensor) for item in tensor_or_list):
+            # Convert list of tensors to numpy
+            return np.array([tensor.item() if tensor.numel() == 1
+                            else tensor.detach().cpu().numpy() if tensor.is_cuda
+                            else tensor.detach().numpy()
+                            for tensor in tensor_or_list])
+        else:
+            # It's a list of numbers
+            return np.array(tensor_or_list)
+    else:
+        # Already a numpy array or other numeric type
+        return np.array(tensor_or_list)
+
+def plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, total_losses, save_path='./training_losses.png'):
     """
     Plot various training losses over epochs and save the figure.
     Handles PyTorch tensors on both CPU and CUDA devices.
@@ -98,29 +120,6 @@ def plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, tota
     """
     import matplotlib.pyplot as plt
     import numpy as np
-    import torch
-
-    # Convert tensors to numpy arrays (with GPU handling)
-    def tensor_to_numpy(tensor_or_list):
-        if isinstance(tensor_or_list, torch.Tensor):
-            # Move tensor to CPU if it's on GPU
-            if tensor_or_list.is_cuda:
-                return tensor_or_list.detach().cpu().numpy()
-            else:
-                return tensor_or_list.detach().numpy()
-        elif isinstance(tensor_or_list, list):
-            if all(isinstance(item, torch.Tensor) for item in tensor_or_list):
-                # Convert list of tensors to numpy
-                return np.array([tensor.item() if tensor.numel() == 1
-                                else tensor.detach().cpu().numpy() if tensor.is_cuda
-                                else tensor.detach().numpy()
-                                for tensor in tensor_or_list])
-            else:
-                # It's a list of numbers
-                return np.array(tensor_or_list)
-        else:
-            # Already a numpy array or other numeric type
-            return np.array(tensor_or_list)
 
     # Convert all loss data to numpy arrays
     box_losses_np = tensor_to_numpy(box_losses)
@@ -165,7 +164,6 @@ def plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, tota
 
     print(f"Plot saved to {save_path}")
 
-    print(f"Plot saved to {save_path}")
 def visualize_sample(dataset, index=0, target_size=640):
     # Lấy một mẫu từ dataset
     src_image, trg_image, boxes, labels, name = dataset[index]

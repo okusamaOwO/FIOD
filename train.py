@@ -12,7 +12,6 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import sys
 import csv
-from utilities import plot_losses
 
 # path = r"D:\UNI\LAB\FIOD_\yolov9_main"
 path = "./yolov9_main"
@@ -33,6 +32,7 @@ from dataset.RealFogDataset import RealFogDataset
 from model.feature_extractor import FeatureExtractor
 from model.fogpassfilter import FogPassFilter_conv1, FogPassFilter_res1, FogPassFilterLoss
 from models.yolo import Model
+from utilities import plot_losses
 from train import parse_opt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -529,8 +529,9 @@ def main():
 
         epoch_loss = [total_loss, loss_box_value, loss_dfl_value, loss_cls_value, loss_fsm_value, loss_con_value]
         with open("losses.csv", mode="a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(epoch_loss)
+            writer = csv.writer(file)  # This line is needed
+            epoch_loss_formated = [round(float(x), 2) if i != 4 else round(x, 6) for i, x in enumerate(epoch_loss)]
+            writer.writerow(epoch_loss_formated)
 
 
         # Print losses after each epoch
@@ -581,7 +582,6 @@ def main():
 
     plot_losses(box_losses, cls_losses, dfl_losses, fsm_losses, con_losses, total_losses)
     print("end")
-
     return
 
 
