@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 import sys
-
+import csv
 from utilities import plot_losses
 
 # path = r"D:\UNI\LAB\FIOD_\yolov9_main"
@@ -50,7 +50,7 @@ def intersect_dicts(da, db, exclude=()):
 
 # def get_model(checkpoint_path = r"D:\UNI\LAB\FIOD_\yolov9-s.pt"):
 # def get_model(checkpoint_path = r"/content/drive/MyDrive/FIOD_/yolov9-s.pt"):
-def get_model(checkpoint_path = "./cloud_dataset/yolov9_s.pt"):
+def get_model(checkpoint_path = "./cloud_dataset/yolov9_e.pt"):
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml).to(device)
 
@@ -60,6 +60,13 @@ def get_model(checkpoint_path = "./cloud_dataset/yolov9_s.pt"):
     return model
 
 def main():
+    #create losses
+    header = ["total_loss", "box_loss", "dfl_loss", "cls_loss", "fsm_loss", "con_loss"]
+    with open("losses.csv", mode="w", newline="") as file:
+      writer = csv.writer(file)
+      writer.writerow(header)
+
+
     args = get_arguments()
     lr_fpf1 = 1e-3  # lr của fogpass filter
     lr_fpf2 = 1e-3
@@ -74,7 +81,7 @@ def main():
     FogPassFilter2.to(device)
     # loss của fpf
     fogpassfilter_loss = FogPassFilterLoss(margin=0.1)
-    
+
     from dataset.oldPairedClear import OldPairedClearSyntheticDataset
     cwsf_dataset = OldPairedClearSyntheticDataset(args.sf_root, args.cw_root, set='train')
     cwsf_pair_loader = DataLoader(
@@ -281,7 +288,7 @@ def main():
                     vector_rf_gram[i] = rf_gram[i][
                         torch.triu(torch.ones_like(rf_gram[i])) == 1
                         ].detach().clone().requires_grad_()
-                    
+
                     fog_factor_sf[i] = fogpassfilter(vector_sf_gram[i])
                     fog_factor_cw[i] = fogpassfilter(vector_cw_gram[i])
                     fog_factor_rf[i] = fogpassfilter(vector_rf_gram[i])
@@ -357,7 +364,7 @@ def main():
                     for j in range(args.batch_size):
                         sf_prediction_logsoftmax = log_m(torch.sigmoid(sf_predictions[1][i][j]))
                         cw_prediction_softmax = m(torch.sigmoid(cw_predictions[1][i][j]))
-                        con_loss += 1000 * kl_loss(sf_prediction_logsoftmax, cw_prediction_softmax)
+                        con_loss += 10 * kl_loss(sf_prediction_logsoftmax, cw_prediction_softmax)
                 con_loss /= (pl * args.batch_size)
 
                 if torch.isnan(sf_predictions[1][i][j]).any() or torch.isnan(cw_predictions[1][i][j]).any():
@@ -410,7 +417,7 @@ def main():
                 rf_features = {'layer0': feature_rf0, 'layer1': feature_rf1}
                 cw_features = {'layer0': feature_cw0, 'layer1': feature_cw1}
                 fsm_weights = {'layer0': 0.5, 'layer1': 0.5}
-                
+
             loss_fsm = 0
             fog_pass_filter_loss = 0
             # print('9')
@@ -479,7 +486,7 @@ def main():
                 args.weight_fsm * loss_fsm +  # FSM Loss
                 args.weight_con * con_loss  # Consistency Loss
             )
-
+            total_loss = total_loss / num_batches
             with torch.autograd.detect_anomaly():
                 scaler.scale(total_loss).backward()
             scaler.unscale_(optimizer)  # unscale gradients
@@ -520,6 +527,12 @@ def main():
         con_losses.append(loss_con_value)
         total_losses.append(total_loss)
 
+        epoch_loss = [total_loss, loss_box_value, loss_dfl_value, loss_cls_value, loss_fsm_value, loss_con_value]
+        with open("losses.csv", mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(epoch_loss)
+
+
         # Print losses after each epoch
         print(colorstr(f"Epoch {epoch + 1}: ") +
             f"{colorstr('bright_magenta', 'total_loss')}: {total_loss:.4f}, "
@@ -542,6 +555,8 @@ def main():
             plots=False,
             compute_loss=compute_loss
         )
+        print(results)
+        print(maps)
         # Update best mAP
         fi = fitness(np.array(results).reshape(1, -1))
         if fi > best_fitness:

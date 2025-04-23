@@ -1,4 +1,1 @@
-# run sequentially
-# run the first line, after that run the second
-#gdown --folder 'https://drive.google.com/drive/u/2/folders/1_Z6bkOlNxQ-pcYEtX8mjZkWNEDclLiic' -O cloud_dataset
-unzip ./cloud_dataset/dataset.zip
+gdown --folder 'https://drive.google.com/drive/u/2/folders/1WjFLEh5xKdP3sQ8NexBBWdNDxK2a3a4n' -O cloud_dataset
