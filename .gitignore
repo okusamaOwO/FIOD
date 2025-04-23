@@ -2,3 +2,5 @@ dataset02
 *.pyc
 .gitignore
 cloud_dataset
+__pycache__/
+*.py[cod]
