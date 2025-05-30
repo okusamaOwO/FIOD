@@ -1,4 +1,3 @@
-
 import datetime
 import glob
 import os
@@ -52,18 +51,16 @@ def get_model(checkpoint_path = "./cloud_dataset/yolov9_e.pt"):
     Look at function's name :) 
     '''
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    model = Model(checkpoint['model'].yaml).to(device)
+    model = Model(checkpoint['model'].yaml)
     csd = checkpoint['model'].float().state_dict()
     csd = intersect_dicts(csd, model.state_dict(), exclude=())
     model.load_state_dict(csd, strict=False)
     return model
 
-def train_fogpass_filter(num_epochs, model, extractor, cwsf_pair_loader, rf_loader, cwsf_pair_loader_fogpass, rf_loader_fogpass):
-    
+def train_fogpass_filter(model, device, extractor, cwsf_pair_loader, rf_loader, cwsf_pair_loader_fogpass, rf_loader_fogpass, args, FogPassFilter1, FogPassFilter1_optimizer, FogPassFilter2, FogPassFilter2_optimizer, fogpassfilter_loss):
+    print("bro chạy vào hàm def thật này")
     fl_losses = []
-
-
-    for epoch in range(num_epochs):
+    for epoch in range(args.num_epochs):
         model.train()
         num_batches = len(cwsf_pair_loader)
         num_batches_cw_sf = 0
@@ -183,7 +180,7 @@ def train_fogpass_filter(num_epochs, model, extractor, cwsf_pair_loader, rf_load
 
 def main():
     args = get_arguments()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     #CREATE DATALOADER
     cwsf_dataset = PairedClearSyntheticDataset(args.sf_root, args.cw_root, set='train')
@@ -264,7 +261,20 @@ def main():
     compute_loss = ComputeLoss(model)
     best_fitness, start_epoch = 0.0, 0
     scheduler.last_epoch = start_epoch - 1
-
-
     extractor = FeatureExtractor(model, 8)
-    train_fogpass_filter(10, model, extractor, cwsf_pair_loader, rf_loader, cwsf_pair_loader_fogpass, rf_loader_fogpass)
+    train_fogpass_filter(model,
+                        device,
+                        extractor,
+                        cwsf_pair_loader,
+                        rf_loader,
+                        cwsf_pair_loader_fogpass,
+                        rf_loader_fogpass,
+                        args,
+                        FogPassFilter1, 
+                        FogPassFilter1_optimizer,
+                        FogPassFilter2,
+                        FogPassFilter2_optimizer,
+                        fogpassfilter_loss)
+
+if __name__ == "__main__":
+  main()
