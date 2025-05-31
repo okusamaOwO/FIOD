@@ -168,10 +168,8 @@ def train_fogpass_filter(model, device, extractor, cwsf_pair_loader, rf_loader, 
                 fog_factor_embeddings = fog_factor_embeddings.div(
                     fog_factor_embeddings_norm.expand(size_fog_factor[1], args.batch_size * 3).t())
                 fog_factor_labels = torch.arange(3, device=device).long().repeat(args.batch_size)
-                print("-" * 100)
-                print(fog_factor_embeddings)
                 fog_pass_filter_loss = fogpassfilter_loss(fog_factor_embeddings, fog_factor_labels)
-                # fogpassfilter_optimizer.step()
+                print(fog_pass_filter_loss)
                 total_fpf_loss += fog_pass_filter_loss
             with torch.autograd.detect_anomaly():
                 total_fpf_loss.backward()
