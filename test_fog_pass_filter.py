@@ -9,6 +9,9 @@ import torch.nn as nn
 from matplotlib import pyplot as plt
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
+from pytorch_metric_learning import losses
+from pytorch_metric_learning.distances import CosineSimilarity
+from pytorch_metric_learning.reducers import MeanReducer
 import sys
 import csv
 path = "./yolov9_main"
@@ -112,7 +115,7 @@ def train_fogpass_filter(model, device, extractor, cwsf_pair_loader, rf_loader, 
                 cw_feature = cw_features[layer]
                 sf_feature = sf_features[layer]
                 rf_feature = rf_features[layer]
-
+                # fog_pass_filter_loss = 0
                 if idx == 0:
                     fogpassfilter = FogPassFilter1
                     fogpassfilter_optimizer = FogPassFilter1_optimizer
@@ -165,6 +168,8 @@ def train_fogpass_filter(model, device, extractor, cwsf_pair_loader, rf_loader, 
                 fog_factor_embeddings = fog_factor_embeddings.div(
                     fog_factor_embeddings_norm.expand(size_fog_factor[1], args.batch_size * 3).t())
                 fog_factor_labels = torch.arange(3, device=device).long().repeat(args.batch_size)
+                print("-" * 100)
+                print(fog_factor_embeddings)
                 fog_pass_filter_loss = fogpassfilter_loss(fog_factor_embeddings, fog_factor_labels)
                 # fogpassfilter_optimizer.step()
                 total_fpf_loss += fog_pass_filter_loss
@@ -236,7 +241,12 @@ def main():
     FogPassFilter2_optimizer = torch.optim.Adamax([p for p in FogPassFilter2.parameters() if p.requires_grad == True],
                                                   lr=lr_fpf2)
     FogPassFilter2.to(device)
-    fogpassfilter_loss = FogPassFilterLoss(margin=0.1)
+    fogpassfilter_loss = losses.ContrastiveLoss(
+      pos_margin=0.1,
+      neg_margin=0.1,
+      distance=CosineSimilarity(),
+      reducer=MeanReducer()
+    )
 
     # CREATE MODEL YOLOV9 PRESUMED FROM PRETRAINED
     model = get_model()
