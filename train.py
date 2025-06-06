@@ -475,9 +475,12 @@ def main():
                     fog_factor_a = fogpassfilter(vector_a_gram)
                     half = int(fog_factor_b.shape[0] / 2)
 
+                    print("FOG FACTOR B SHAPE", fog_factor_b.shape)
+                    print("FOG FACTOR A SHAPE", fog_factor_a.shape)
+                    print("HALF", half)
+                    
                     layer_fsm_loss += fsm_weights[layer] * torch.mean(
-                        (fog_factor_b / (hb * wb) - fog_factor_a / (ha * wa)) ** 2) / half / b_feature.size(0)
-
+                        (fog_factor_b / (hb * wb) - fog_factor_a / (ha * wa)) ** 2)
                 loss_fsm += -torch.log10(layer_fsm_loss)/4
 
             total_loss = (
