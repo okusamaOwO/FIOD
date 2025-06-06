@@ -63,12 +63,13 @@ def get_model(checkpoint_path = "./cloud_dataset/yolov9_e.pt"):
 def train_fogpass_filter(model, device, extractor, cwsf_pair_loader, rf_loader, cwsf_pair_loader_fogpass, rf_loader_fogpass, args, FogPassFilter1, FogPassFilter1_optimizer, FogPassFilter2, FogPassFilter2_optimizer, fogpassfilter_loss):
     print("bro chạy vào hàm def thật này")
     fl_losses = []
-    for epoch in range(args.num_epochs):
+    best_fpf_loss = -float('inf')
+    for epoch in range(args.num_epochs_fpf):
         model.train()
         num_batches = len(cwsf_pair_loader)
         num_batches_cw_sf = 0
-        pbar = tqdm(range(num_batches), desc=f"Epoch {epoch + 1}/{args.num_epochs}")
-
+        pbar = tqdm(range(num_batches), desc=f"Epoch {epoch + 1}/{args.num_epochs_fpf}")
+        epoch_loss = 0
         for batch_idx in pbar:
             foggy_image, clear_image, box, name = next(iter(cwsf_pair_loader_fogpass))
             rf_img, rf_name = next(iter(rf_loader_fogpass))
@@ -169,15 +170,37 @@ def train_fogpass_filter(model, device, extractor, cwsf_pair_loader, rf_loader, 
                     fog_factor_embeddings_norm.expand(size_fog_factor[1], args.batch_size * 3).t())
                 fog_factor_labels = torch.arange(3, device=device).long().repeat(args.batch_size)
                 fog_pass_filter_loss = fogpassfilter_loss(fog_factor_embeddings, fog_factor_labels)
-                print(fog_pass_filter_loss)
                 total_fpf_loss += fog_pass_filter_loss
             with torch.autograd.detect_anomaly():
                 total_fpf_loss.backward()
+            epoch_loss += total_fpf_loss
             FogPassFilter1_optimizer.step()
             FogPassFilter2_optimizer.step()
 
             foggy_image, clear_image, box, name = next(iter(cwsf_pair_loader))
             rf_img, rf_name = next(iter(rf_loader))
+        
+        ## SAVE MODEL
+        if (epoch_loss > best_fpf_loss == 0):
+            print("saving best model..")
+            torch.save({
+                'epoch': epoch,
+                'fpf1_state_dict': FogPassFilter1.state_dict(),
+                'fpf2_state_dict': FogPassFilter2.state_dict(),
+                'optimizer_fpf1_state_dict': FogPassFilter1_optimizer.state_dict(),
+                'optimizer_fpf2_state_dict': FogPassFilter2_optimizer.state_dict(),
+                'loss': fogpassfilter_loss,
+            }, "./best_fpf.pth")
+
+        print("END OF TRAINING FPF MODEL, SAVING LATEST MODEL")
+        torch.save({
+            'epoch': args.num_epochs_fpf,
+            'fpf1_state_dict': FogPassFilter1.state_dict(),
+            'fpf2_state_dict': FogPassFilter2.state_dict(),
+            'optimizer_fpf1_state_dict': FogPassFilter1_optimizer.state_dict(),
+            'optimizer_fpf2_state_dict': FogPassFilter2_optimizer.state_dict(),
+            'loss': fogpassfilter_loss,
+        }, "latest_fpf.pth")
 
 
 

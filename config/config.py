@@ -8,6 +8,7 @@ INPUT_SIZE = '2048,1024'
 INPUT_SIZE_RF = '1280,960'
 NUM_EPOCHS = 3
 NUM_STEPS = 1000000
+NUM_EPOCHS_FPF = 1
 NUM_STEPS_STOP = 60000  
 RANDOM_SEED = 1234
 
@@ -42,6 +43,7 @@ def get_arguments():
     parser.add_argument("--num-steps-stop", type=int, default=NUM_STEPS_STOP, help="Number of steps for early stopping")
     parser.add_argument("--random-seed", type=int, default=RANDOM_SEED, help="Random seed")
     parser.add_argument("--beta", type=float, default=BETA, help="Beta parameter")
+    parser.add_argument("--num-epochs-fpf", type=float, default=NUM_EPOCHS_FPF, help="Number of epochs to train fog pass filter already")
 
     # Loss weights
     parser.add_argument("--weight-box", type=float, default=WEIGHT_BOX, help="Box loss weight")
