@@ -478,7 +478,7 @@ def main():
                     layer_fsm_loss += fsm_weights[layer] * torch.mean(
                         (fog_factor_b / (hb * wb) - fog_factor_a / (ha * wa)) ** 2) / half / b_feature.size(0)
 
-                loss_fsm += layer_fsm_loss / 4.
+                loss_fsm += -torch.log10(layer_fsm_loss)/4
 
             total_loss = (
                 sf_loss +
