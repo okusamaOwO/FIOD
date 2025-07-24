@@ -14,13 +14,12 @@ class PairedClearSyntheticDataset(data.Dataset):
         "clear_root: path to clear folder"
         "foggy_root: path to synthetic folder"
         ''' 
-
         self.clear_root = clear_root
         self.foggy_root = foggy_root
         self.set = set
 
         # Read image list from images directory
-        self.foggy_img_dir = osp.join(clear_root, set, 'images')
+        self.clear_img_dir = osp.join(clear_root, set, 'images')
         self.foggy_img_dir = osp.join(foggy_root, set, 'images')
         self.label_dir = osp.join(clear_root, set, 'labels')
         self.img_names = [f for f in os.listdir(self.foggy_img_dir) if f.endswith('.jpg') or f.endswith('.png')]
