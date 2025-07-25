@@ -63,7 +63,7 @@ def get_model(checkpoint_path = "./cloud_dataset/yolov9_e.pt"):
 def train_fogpass_filter(model, device, extractor, cwsf_pair_loader_fogpass, rf_loader_fogpass, args, FogPassFilter1, FogPassFilter1_optimizer, FogPassFilter2, FogPassFilter2_optimizer, fogpassfilter_loss):
     print("bro chạy vào hàm def thật này")
     fl_losses = []
-    best_fpf_loss = -float('inf')
+    best_fpf_loss = 0
     print("len of dataloader", len(rf_loader_fogpass))
     for epoch in range(args.num_epochs_fpf):
         total_batches = len(cwsf_pair_loader_fogpass)  
@@ -168,6 +168,27 @@ def train_fogpass_filter(model, device, extractor, cwsf_pair_loader_fogpass, rf_
             FogPassFilter1_optimizer.step()
             FogPassFilter2_optimizer.step()
         print(f"[Epoch {epoch+1}] Epoch Loss: {epoch_loss:.4f}")
+        ## SAVE MODEL
+        if (epoch_loss > best_fpf_loss):
+            print("saving best model..")
+            torch.save({
+                'epoch': epoch,
+                'fpf1_state_dict': FogPassFilter1.state_dict(),
+                'fpf2_state_dict': FogPassFilter2.state_dict(),
+                'optimizer_fpf1_state_dict': FogPassFilter1_optimizer.state_dict(),
+                'optimizer_fpf2_state_dict': FogPassFilter2_optimizer.state_dict(),
+                'loss': fogpassfilter_loss,
+            }, "./best_fpf.pth")
+
+        print("END OF TRAINING FPF MODEL, SAVING LATEST MODEL")
+        torch.save({
+            'epoch': args.num_epochs_fpf,
+            'fpf1_state_dict': FogPassFilter1.state_dict(),
+            'fpf2_state_dict': FogPassFilter2.state_dict(),
+            'optimizer_fpf1_state_dict': FogPassFilter1_optimizer.state_dict(),
+            'optimizer_fpf2_state_dict': FogPassFilter2_optimizer.state_dict(),
+            'loss': fogpassfilter_loss,
+        }, "latest_fpf.pth")
 
 
 def main():
