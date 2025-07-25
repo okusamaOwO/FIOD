@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
 from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 from pytorch_metric_learning import losses
 from pytorch_metric_learning.distances import CosineSimilarity
 from pytorch_metric_learning.reducers import MeanReducer
@@ -64,150 +64,110 @@ def train_fogpass_filter(model, device, extractor, cwsf_pair_loader_fogpass, rf_
     print("bro chạy vào hàm def thật này")
     fl_losses = []
     best_fpf_loss = -float('inf')
+    print("len of dataloader", len(rf_loader_fogpass))
     for epoch in range(args.num_epochs_fpf):
-        print("chạy vào đây chưa đmm")
-        model.train()
-        num_batches = len(cwsf_pair_loader_fogpass)
-        num_batches_cw_sf = 0
-        for batch_index, (paired_imgs_batch,realfog_imgs_batch) in enumerate(zip(cwsf_pair_loader_fogpass, rf_loader_fogpass)):
-          print(paired_imgs_batch[0])
-          
-          break
-        break
-        # pbar = tqdm(range(num_batches), desc=f"Epoch {epoch + 1}/{args.num_epochs_fpf}")
-        # epoch_loss = 0
-        # for batch_idx in pbar:
-        #     foggy_image, clear_image, box, name = next(iter(cwsf_pair_loader_fogpass))
-        #     rf_img, rf_name = next(iter(rf_loader_fogpass))
+        total_batches = len(cwsf_pair_loader_fogpass)  
+        batch_bar = tqdm(zip(cwsf_pair_loader_fogpass, rf_loader_fogpass), total=total_batches, desc=f"Epoch {epoch+1}", leave=False)        
+        epoch_loss = 0
+        for batch_index, (paired_imgs_batch,realfog_imgs_batch) in enumerate(batch_bar):
+            foggy_image, clear_image, box, name = paired_imgs_batch # that ra la phai co e, es moi dung nma ke di luoi bo me
+            rf_img, rf_name = realfog_imgs_batch
 
+            # Move images to GPU
+            realfog_images = rf_img.to(device)
+            foggy_images = foggy_image.to(device)
+            clear_images = clear_image.to(device)
 
-        #     # TRAINING FOGPASSFILTER PHRASE
-        #     model.eval()
-        #     for param in model.parameters():
-        #         param.requires_grad = False # freeze the model yolo params
-        #     for param in FogPassFilter1.parameters():
-        #         param.requires_grad = True
-        #     for param in FogPassFilter2.parameters():
-        #         param.requires_grad = True
+            # TRAINING FOGPASSFILTER PHRASE 
+            model.eval() 
+            for param in model.parameters():
+                param.requires_grad = False # freeze the model yolo params 
+            for param in FogPassFilter1.parameters():
+                param.requires_grad = True
+            for param in FogPassFilter2.parameters():
+                param.requires_grad = True
 
+            # Get feature maps for each image type
+            realfog_features = extractor.get_feature_maps(realfog_images)
+            foggy_features = extractor.get_feature_maps(foggy_images)
+            clear_features = extractor.get_feature_maps(clear_images)
+            feature_realfog0, feature_realfog1 = realfog_features[0], realfog_features[1]
+            feature_foggy0, feature_foggy1 = foggy_features[0], foggy_features[1]
+            feature_clear0, feature_clear1 = clear_features[0], clear_features[1]
+            fsm_weights = {'layer0': 0.5, 'layer1': 0.5}
+            sf_features = {'layer0': feature_foggy0, 'layer1': feature_foggy1}
+            cw_features = {'layer0': feature_clear0, 'layer1': feature_clear1}
+            rf_features = {'layer0': feature_realfog0, 'layer1': feature_realfog1}
 
-        #     # Get corresponding RF batch
-        #     rf_batch_idx = batch_idx % len(rf_loader)
-        #     rf_img, rf_name = next(iter(rf_loader))
+            total_fpf_loss = 0
+            fogpassfilter = None
+            fogpassfilter_optimizer = None
+            # loss này là của từng layers
+            for idx, layer in enumerate(fsm_weights):
+                cw_feature = cw_features[layer]
+                sf_feature = sf_features[layer]
+                rf_feature = rf_features[layer]
+                # fog_pass_filter_loss = 0
+                if idx == 0:
+                    fogpassfilter = FogPassFilter1
+                    fogpassfilter_optimizer = FogPassFilter1_optimizer
+                elif idx == 1:
+                    fogpassfilter = FogPassFilter2
+                    fogpassfilter_optimizer = FogPassFilter2_optimizer
 
-        #     # Move images to GPU
-        #     realfog_images = rf_img.to(device)
-        #     foggy_images = foggy_image.to(device)
-        #     clear_images = clear_image.to(device)
+                fogpassfilter.train()
+                fogpassfilter_optimizer.zero_grad()
 
+                sf_gram = [0] * args.batch_size
+                cw_gram = [0] * args.batch_size
+                rf_gram = [0] * args.batch_size
+                vector_sf_gram = [0] * args.batch_size
+                vector_cw_gram = [0] * args.batch_size
+                vector_rf_gram = [0] * args.batch_size
+                fog_factor_sf = [0] * args.batch_size
+                fog_factor_cw = [0] * args.batch_size
+                fog_factor_rf = [0] * args.batch_size
 
-        #     # Get feature maps for each image type
-        #     realfog_features = extractor.get_feature_maps(realfog_images)
-        #     foggy_features = extractor.get_feature_maps(foggy_images)
-        #     clear_features = extractor.get_feature_maps(clear_images)
-        #     feature_realfog0, feature_realfog1 = realfog_features[0], realfog_features[1]
-        #     feature_foggy0, feature_foggy1 = foggy_features[0], foggy_features[1]
-        #     feature_clear0, feature_clear1 = clear_features[0], clear_features[1]
-        #     fsm_weights = {'layer0': 0.5, 'layer1': 0.5}
-        #     sf_features = {'layer0': feature_foggy0, 'layer1': feature_foggy1}
-        #     cw_features = {'layer0': feature_clear0, 'layer1': feature_clear1}
-        #     rf_features = {'layer0': feature_realfog0, 'layer1': feature_realfog1}
+                for i in range(args.batch_size):
+                    sf_gram[i] = gram_matrix(sf_feature[i])
+                    cw_gram[i] = gram_matrix(cw_feature[i])
+                    rf_gram[i] = gram_matrix(rf_feature[i])
+                    vector_sf_gram[i] = sf_gram[i][
+                        torch.triu(torch.ones_like(sf_gram[i])) == 1
+                        ].detach().clone().requires_grad_()
 
-        #     total_fpf_loss = 0
-        #     fogpassfilter = None
-        #     fogpassfilter_optimizer = None
+                    vector_cw_gram[i] = cw_gram[i][
+                        torch.triu(torch.ones_like(cw_gram[i])) == 1
+                        ].detach().clone().requires_grad_()
 
-        #     # loss này là của từng layers
-        #     for idx, layer in enumerate(fsm_weights):
-        #         cw_feature = cw_features[layer]
-        #         sf_feature = sf_features[layer]
-        #         rf_feature = rf_features[layer]
-        #         # fog_pass_filter_loss = 0
-        #         if idx == 0:
-        #             fogpassfilter = FogPassFilter1
-        #             fogpassfilter_optimizer = FogPassFilter1_optimizer
-        #         elif idx == 1:
-        #             fogpassfilter = FogPassFilter2
-        #             fogpassfilter_optimizer = FogPassFilter2_optimizer
+                    vector_rf_gram[i] = rf_gram[i][
+                        torch.triu(torch.ones_like(rf_gram[i])) == 1
+                        ].detach().clone().requires_grad_()
 
-        #         fogpassfilter.train()
-        #         fogpassfilter_optimizer.zero_grad()
+                    fog_factor_sf[i] = fogpassfilter(vector_sf_gram[i])
+                    fog_factor_cw[i] = fogpassfilter(vector_cw_gram[i])
+                    fog_factor_rf[i] = fogpassfilter(vector_rf_gram[i])
 
-        #         sf_gram = [0] * args.batch_size
-        #         cw_gram = [0] * args.batch_size
-        #         rf_gram = [0] * args.batch_size
-        #         vector_sf_gram = [0] * args.batch_size
-        #         vector_cw_gram = [0] * args.batch_size
-        #         vector_rf_gram = [0] * args.batch_size
-        #         fog_factor_sf = [0] * args.batch_size
-        #         fog_factor_cw = [0] * args.batch_size
-        #         fog_factor_rf = [0] * args.batch_size
+                embeddings_list = []
+                for i in range(args.batch_size):
+                    embeddings_list.append(fog_factor_sf[i].unsqueeze(0))
+                    embeddings_list.append(fog_factor_cw[i].unsqueeze(0))
+                    embeddings_list.append(fog_factor_rf[i].unsqueeze(0))
+                fog_factor_embeddings = torch.cat(embeddings_list, dim=0)
 
-        #         for i in range(args.batch_size):
-        #             sf_gram[i] = gram_matrix(sf_feature[i])
-        #             cw_gram[i] = gram_matrix(cw_feature[i])
-        #             rf_gram[i] = gram_matrix(rf_feature[i])
-        #             vector_sf_gram[i] = sf_gram[i][
-        #                 torch.triu(torch.ones_like(sf_gram[i])) == 1
-        #                 ].detach().clone().requires_grad_()
-
-        #             vector_cw_gram[i] = cw_gram[i][
-        #                 torch.triu(torch.ones_like(cw_gram[i])) == 1
-        #                 ].detach().clone().requires_grad_()
-
-        #             vector_rf_gram[i] = rf_gram[i][
-        #                 torch.triu(torch.ones_like(rf_gram[i])) == 1
-        #                 ].detach().clone().requires_grad_()
-
-        #             fog_factor_sf[i] = fogpassfilter(vector_sf_gram[i])
-        #             fog_factor_cw[i] = fogpassfilter(vector_cw_gram[i])
-        #             fog_factor_rf[i] = fogpassfilter(vector_rf_gram[i])
-
-        #         embeddings_list = []
-        #         for i in range(args.batch_size):
-        #             embeddings_list.append(fog_factor_sf[i].unsqueeze(0))
-        #             embeddings_list.append(fog_factor_cw[i].unsqueeze(0))
-        #             embeddings_list.append(fog_factor_rf[i].unsqueeze(0))
-        #         fog_factor_embeddings = torch.cat(embeddings_list, dim=0)
-
-        #         fog_factor_embeddings_norm = torch.norm(fog_factor_embeddings, p=2, dim=1).detach()
-        #         size_fog_factor = fog_factor_embeddings.size()
-        #         fog_factor_embeddings = fog_factor_embeddings.div(
-        #             fog_factor_embeddings_norm.expand(size_fog_factor[1], args.batch_size * 3).t())
-        #         fog_factor_labels = torch.arange(3, device=device).long().repeat(args.batch_size)
-        #         fog_pass_filter_loss = fogpassfilter_loss(fog_factor_embeddings, fog_factor_labels)
-        #         total_fpf_loss += fog_pass_filter_loss
-        #     with torch.autograd.detect_anomaly():
-        #         total_fpf_loss.backward()
-        #     epoch_loss += total_fpf_loss
-        #     FogPassFilter1_optimizer.step()
-        #     FogPassFilter2_optimizer.step()
-
-        #     foggy_image, clear_image, box, name = next(iter(cwsf_pair_loader))
-        #     rf_img, rf_name = next(iter(rf_loader))
-
-        # ## SAVE MODEL
-        # if (epoch_loss > best_fpf_loss == 0):
-        #     print("saving best model..")
-        #     torch.save({
-        #         'epoch': epoch,
-        #         'fpf1_state_dict': FogPassFilter1.state_dict(),
-        #         'fpf2_state_dict': FogPassFilter2.state_dict(),
-        #         'optimizer_fpf1_state_dict': FogPassFilter1_optimizer.state_dict(),
-        #         'optimizer_fpf2_state_dict': FogPassFilter2_optimizer.state_dict(),
-        #         'loss': fogpassfilter_loss,
-        #     }, "./best_fpf.pth")
-
-        # print("END OF TRAINING FPF MODEL, SAVING LATEST MODEL")
-        # torch.save({
-        #     'epoch': args.num_epochs_fpf,
-        #     'fpf1_state_dict': FogPassFilter1.state_dict(),
-        #     'fpf2_state_dict': FogPassFilter2.state_dict(),
-        #     'optimizer_fpf1_state_dict': FogPassFilter1_optimizer.state_dict(),
-        #     'optimizer_fpf2_state_dict': FogPassFilter2_optimizer.state_dict(),
-        #     'loss': fogpassfilter_loss,
-        # }, "latest_fpf.pth")
-
+                fog_factor_embeddings_norm = torch.norm(fog_factor_embeddings, p=2, dim=1).detach()
+                size_fog_factor = fog_factor_embeddings.size()
+                fog_factor_embeddings = fog_factor_embeddings.div(
+                    fog_factor_embeddings_norm.expand(size_fog_factor[1], args.batch_size * 3).t())
+                fog_factor_labels = torch.arange(3, device=device).long().repeat(args.batch_size)
+                fog_pass_filter_loss = fogpassfilter_loss(fog_factor_embeddings, fog_factor_labels)
+                total_fpf_loss += fog_pass_filter_loss
+            with torch.autograd.detect_anomaly():
+                total_fpf_loss.backward()
+            epoch_loss += total_fpf_loss
+            FogPassFilter1_optimizer.step()
+            FogPassFilter2_optimizer.step()
+        print(f"[Epoch {epoch+1}] Epoch Loss: {epoch_loss:.4f}")
 
 
 def main():
@@ -215,8 +175,8 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     #CREATE DATALOADER
-    cwsf_dataset = PairedClearSyntheticDataset(args.sf_root, args.cw_root, set='train')
-    rf_dataset = RealFogDataset(args.rf_root)
+    cwsf_dataset = PairedClearSyntheticDataset(args.cw_root,args.sf_root, set='train')
+    rf_dataset = RealFogDataset(args.rf_root) 
     cwsf_pair_loader_fogpass = DataLoader(
         cwsf_dataset,
         batch_size=args.batch_size,
@@ -230,7 +190,11 @@ def main():
     rf_loader_fogpass = DataLoader(
         rf_dataset,
         batch_size=args.batch_size,
-        shuffle=True,
+        sampler=RandomSampler(
+            rf_dataset,
+            replacement=True,  # Enable sampling with replacement
+            num_samples=len(cwsf_pair_loader_fogpass.dataset)
+        ),        
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
@@ -284,7 +248,6 @@ def main():
     train_fogpass_filter(model,
                         device,
                         extractor,
-
                         cwsf_pair_loader_fogpass,
                         rf_loader_fogpass,
                         args,
