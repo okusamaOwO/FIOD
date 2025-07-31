@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
 from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, RandomSampler
 from pytorch_metric_learning import losses
 from pytorch_metric_learning.distances import CosineSimilarity
 from pytorch_metric_learning.reducers import MeanReducer
@@ -36,7 +36,7 @@ from dataset.oldPairedClear import OldPairedClearSyntheticDataset
 #HELPER FUNCTIONS
 def gram_matrix(feature_map):
     '''
-    This is used for calculating the grammatrix from feature maps 
+    This is used for calculating the grammatrix from feature maps
     '''
     channels, height, width = feature_map.size()
     features = feature_map.view(channels, height * width)
@@ -45,13 +45,13 @@ def gram_matrix(feature_map):
 
 def intersect_dicts(da, db, exclude=()):
     '''
-    Forgo its purpose but it helps the code run :)) 
+    Forgo its purpose but it helps the code run :))
     '''
     return {k: v for k, v in da.items() if k in db and all(x not in k for x in exclude) and v.shape == db[k].shape}
 
 def get_model(checkpoint_path = "./cloud_dataset/yolov9_e.pt"):
     '''
-    Look at function's name :) 
+    Look at function's name :)
     '''
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
     model = Model(checkpoint['model'].yaml)
@@ -60,25 +60,49 @@ def get_model(checkpoint_path = "./cloud_dataset/yolov9_e.pt"):
     model.load_state_dict(csd, strict=False)
     return model
 
-def train(model, device, extractor, cwsf_pair_loader_fogpass, rf_loader_fogpass, args, FogPassFilter1, FogPassFilter1_optimizer, FogPassFilter2, FogPassFilter2_optimizer, fogpassfilter_loss):
-    
-    for epoch in range(args.num_epochs_fpf):
-        total_batches = len(cwsf_pair_loader_fogpass)  
-        batch_bar = tqdm(zip(cwsf_pair_loader_fogpass, rf_loader_fogpass), total=total_batches, desc=f"Epoch {epoch+1}", leave=False)        
-        epoch_loss = 0
+def train(model, device, extractor, cwsf_pair_loader, rf_loader, args, FogPassFilter1, FogPassFilter1_optimizer, FogPassFilter2, FogPassFilter2_optimizer,optimizer, fogpassfilter_loss):
+    # different kind of losses
+    header = ["total_loss", "box_loss", "dfl_loss", "cls_loss", "fsm_loss", "con_loss"]
+    with open("losses.csv", mode="w", newline="") as file:
+      writer = csv.writer(file)
+      writer.writerow(header)
+    kl_loss = torch.nn.KLDivLoss(reduction='batchmean')
+    m = nn.Softmax(dim=1)
+    log_m = nn.LogSoftmax(dim=1)
+    box_losses = []
+    cls_losses = []
+    dfl_losses = []
+    fsm_losses = []
+    con_losses = []
+    total_losses = []
+
+    for epoch in range(args.num_epochs):
+        total_batches = len(cwsf_pair_loader)
+        batch_bar = tqdm(zip(cwsf_pair_loader, rf_loader), total=total_batches, desc=f"Epoch {epoch+1}", leave=False)
+        loss_box_value = 0
+        loss_cls_value = 0
+        loss_dfl_value = 0
+        loss_fsm_value = 0
+        loss_con_value = 0
+        epoch_fpf_loss = 0
+        import math
+        best_fpf_loss = 1e10
         for batch_index, (paired_imgs_batch,realfog_imgs_batch) in enumerate(batch_bar):
             foggy_image, clear_image, box, name = paired_imgs_batch # that ra la phai co e, es moi dung nma ke di luoi bo me
             rf_img, rf_name = realfog_imgs_batch
-
             # Move images to GPU
             realfog_images = rf_img.to(device)
             foggy_images = foggy_image.to(device)
             clear_images = clear_image.to(device)
 
-            # TRAINING FOGPASSFILTER PHRASE 
-            model.eval() 
+            # TRAINING FOGPASSFILTER PHRASE
+            # TRAINING FOGPASSFILTER PHRASE
+            # TRAINING FOGPASSFILTER PHRASE
+
+
+            model.eval()
             for param in model.parameters():
-                param.requires_grad = False # freeze the model yolo params 
+                param.requires_grad = False # freeze the model yolo params
             for param in FogPassFilter1.parameters():
                 param.requires_grad = True
             for param in FogPassFilter2.parameters():
@@ -161,12 +185,32 @@ def train(model, device, extractor, cwsf_pair_loader_fogpass, rf_loader_fogpass,
                 total_fpf_loss += fog_pass_filter_loss
             with torch.autograd.detect_anomaly():
                 total_fpf_loss.backward()
-            epoch_loss += total_fpf_loss
+
+            epoch_fpf_loss += total_fpf_loss
             FogPassFilter1_optimizer.step()
             FogPassFilter2_optimizer.step()
-        print(f"[Epoch {epoch+1}] Epoch Loss: {epoch_loss:.4f}")
+
+
+
+            # TRAINING YOLOV9 MODEL
+            # TRAINING YOLOV9 MODEL
+            # TRAINING YOLOV9 MODEL
+            model.train()
+            for param in model.parameters():
+                param.requires_grad = True
+            for param in FogPassFilter1.parameters():
+                param.requires_grad = False
+            for param in FogPassFilter2.parameters():
+                param.requires_grad = False
+            optimizer.zero_grad()
+            sf_loss = 0
+            cw_loss = 0
+            con_loss = 0
+
+        print(f"[Epoch {epoch+1}] Epoch Loss: {epoch_fpf_loss:.4f}")
         ## SAVE MODEL
-        if (epoch_loss > best_fpf_loss == 0):
+        if (epoch_fpf_loss < best_fpf_loss):
+            best_fpf_loss = epoch_fpf_loss
             print("saving best model..")
             torch.save({
                 'epoch': epoch,
@@ -194,7 +238,7 @@ def main():
 
     #CREATE DATALOADER
     cwsf_dataset = PairedClearSyntheticDataset(args.cw_root,args.sf_root, set='train')
-    rf_dataset = RealFogDataset(args.rf_root) 
+    rf_dataset = RealFogDataset(args.rf_root)
     cwsf_pair_loader = DataLoader(
         cwsf_dataset,
         batch_size=args.batch_size,
@@ -211,8 +255,8 @@ def main():
         sampler=RandomSampler(
             rf_dataset,
             replacement=True,  # Enable sampling with replacement
-            num_samples=len(cwsf_pair_loader_fogpass.dataset)
-        ),        
+            num_samples=len(cwsf_pair_loader.dataset)
+        ),
         drop_last=True,
         num_workers=args.num_workers,
         pin_memory=False,
@@ -238,13 +282,13 @@ def main():
       distance=CosineSimilarity(),
       reducer=MeanReducer()
     )
-    # LOAD BEST FPF MODEL 
+    # LOAD BEST FPF MODEL
     checkpoint = torch.load("./best_fpf.pth", map_location=device)
     FogPassFilter1.load_state_dict(checkpoint['fpf1_state_dict'])
     FogPassFilter2.load_state_dict(checkpoint['fpf2_state_dict'])
     FogPassFilter1_optimizer.load_state_dict(checkpoint['optimizer_fpf1_state_dict'])
     FogPassFilter2_optimizer.load_state_dict(checkpoint['optimizer_fpf2_state_dict'])
-    start_epoch = checkpoint['epoch'] # don't need to care about this one :P 
+    start_epoch = checkpoint['epoch'] # don't need to care about this one :P
     print(f"Restored FPF models from epoch {start_epoch}")
 
 
@@ -282,5 +326,9 @@ def main():
           FogPassFilter1_optimizer,
           FogPassFilter2,
           FogPassFilter2_optimizer,
-          losses)
+          optimizer,
+          fogpassfilter_loss)
     print("end.")
+
+if __name__ == "__main__":
+    main()
